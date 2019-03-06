@@ -1,17 +1,5 @@
-for(i,0,5)={for(j,0,5)={i*j}}
-
-#nested for loops
-#if and else statements
-#while loops
-
-scaleArray(array,factor) = {
-	for(i,0,len(array)) = {
-		array[i]*=factor
-	}
-};
-scaleArray([1,2,3]);
-
-#need returns in functions
-#need value setting for subscripting
-#need to fix += -= *= /=
-#need built in functions like len
+a=[[1,2,3],[4,5,6],[7,8,9]];
+for(i,0,3) = {
+	for(j,0,3) = {
+		a[i][j];
+}}

@@ -4,14 +4,15 @@ class Token:
         self.value=value
         self.typ=typ
 class Function:
-    def __init__(self,variables:list,chars:str):
+    def __init__(self,variables:list,chars:str,name:str):
         self.variables=variables
         self.chars=chars
+        self.name=name
 TOKENS="+= -= *= /= == != <= >= && || + - / * % ^ = < > ( ) { } [ ] . , \" -> ;".split(" ") #must be in order of largest to smallest
-OPERATORS=[[' . '], [' ^ '],[' * ',' / ',' % '], [' + ',' - '], [' == ',' != ',' < ',' > ',' <= ',' >= '], [' && ',' || '], [' = '],[' -> ']] #The spaces show where values to be evaluated should be #Order of operations: first in array are evaluated first
-OPERATORS_NOSPACE=[['.'], ['^'], ['*','/','%'],['+','-'], ['==','!=','<','>','<=','>='], ['&&','||'], ['='],['->']]
+OPERATORS=[[' . '], [' ^ '],[' * ',' / ',' % '], [' + ',' - '], [' == ',' != ',' < ',' > ',' <= ',' >= '], [' && ',' || '], [' = ', ' += ', ' -= ', ' *= ', ' /= '],[' -> ']] #The spaces show where values to be evaluated should be #Order of operations: first in array are evaluated first
+OPERATORS_NOSPACE=[['.'], ['^'], ['*','/','%'],['+','-'], ['==','!=','<','>','<=','>='], ['&&','||'], ['=', '+=', '-=', '*=', '/='],['->']]
 KEYWORDS=["if", "rtn"]
-SCOPE=[{'len':Function(['array'],"")}]#An array of dictionaries - most specific scope is last - THIS IS WHERE ALL BUILT IN FUNCTIONS GO
+SCOPE=[{}]#An array of dictionaries - most specific scope is last
 def saveToScope(var:str,val):
     #Look for the variable already existing, starting in the most local scope. If it doesn't exist anywhere, add it to the most local scope.
     for i in range(len(SCOPE)):
@@ -154,11 +155,11 @@ def typify(tokens:list)->list:
         elif token in TOKENS:
             tokens[i]=Token(token, "token")
             return typify(tokens)
-        elif token=="true":
-            tokens[i]=True
+        elif token=="True":
+            tokens[i]=Token(True, "bool")
             return typify(tokens)
-        elif token=="false":
-            tokens[i]=False
+        elif token=="False":
+            tokens[i]=Token(False, "bool")
             return typify(tokens)
         else:
             tokens[i]=Token(token, "variable")
@@ -214,8 +215,22 @@ def operate(tokens:list,opIdx:int):
     elif op=="||":
         ans=lhs or rhs
     elif op=="=":
+        #if lhs
+        #Subscripting - IMPORTANT DOCUMENTATION: This is how setting values with subscripting works, for both arrays and dictionaries: Token(["a",0,2],"subscript"), where the first value in the array is the name of the dict/array which can be found by subscripting SCOPE. The values after represent the next subscripts within. THIS SHOULD BE FOR NORMAL VARIABLES TOO!!!! THEY ARE REALLY THE SAME, JUST WITHOUT THE SECOND AND BEYOND VALUES IN THAT ARRAY! CHANGE THAT! This will also require a change in the getValue function, because subscripting (or any variable, really) will always create a variable Token, even if not using an '=' sign 
         ans=rhs
         saveToScope(tokens[opIdx-1].value,rhs)
+    elif op=="+=":
+        ans=lhs+rhs
+        saveToScope(tokens[opIdx-1].value,ans)
+    elif op=="-=":
+        ans=lhs-rhs
+        saveToScope(tokens[opIdx-1].value,ans)
+    elif op=="*=":
+        ans=lhs*rhs
+        saveToScope(tokens[opIdx-1].value,ans)
+    elif op=="/=":
+        ans=lhs/rhs
+        saveToScope(tokens[opIdx-1].value,ans)
     else:
         print("Unknown operator: " + op)
     tokens.pop(opIdx-1)
@@ -269,16 +284,14 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                                     current.append(tokens[j])
                                             if len(current)>0:array.append(evaluate([current])[0])
                                             chars=tokens[i+2].value
-                                            function=Function([array[0]],chars)
-                                            SCOPE[len(SCOPE)-1]['for']=function #Always save to the most specific scope, so there can be nested for loops
-                                            for j in range(i-count-1,i+2):
-                                                tokens.pop(i-count-1)
-                                            #Store each result of the loop in the results list, so they can be evaluated seperately
-                                            results=[]
+                                            function=Function([array[0]],chars,funcName)
+                                            saveToScope('for',function) #Always save to the most specific scope, so there can be nested for loops
+                                            tokenss.pop(l)
                                             for j in range(array[1],array[2]):
-                                                print(j)
-                                                results.append(evaluate(typify(tokenize("for("+str(j)+");")))[0])
-                                            tokens[i-count-1]=results
+                                                SCOPE.append({array[0]:j})
+                                                result=evaluate(typify(tokenize(chars)))
+                                                #tokenss.insert(l+j,result)
+                                                SCOPE.pop()
                                             return evaluate(tokenss)
                                             break
                                         else:
@@ -288,7 +301,7 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                                 if not tokens[j].value==",":
                                                     variables.append(tokens[j].value)
                                             chars=tokens[i+2].value
-                                            function=Function(variables,chars)
+                                            function=Function(variables,chars,funcName)
                                             saveToScope(funcName,function)
                                             for j in range(i-count-1,i+2):
                                                 tokens.pop(i-count-1)
@@ -298,7 +311,6 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                     else:
                                         #Function Call
                                         function=getValue(tokens[i-count-1])
-                                        newScope={}
                                         array=[]
                                         current=[]
                                         for j in range(i-count+1,i):
@@ -314,20 +326,37 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                             else:
                                                 current.append(tokens[j])
                                         if len(current)>0:array.append(evaluate([current])[0])
-                                        for j in range(len(function.variables)):
-                                            newScope[function.variables[j]]=array[j]
-                                        SCOPE.append(newScope)
                                         for j in range(i-count-1,i):
                                             tokens.pop(i-count-1)
-                                        tok=tokenize(function.chars)
-                                        typi=typify(tok)
-                                        evalu=evaluate(typi)
-                                        tokens[i-count-1]=evalu[0]
+
+                                        #Built in functions
+                                        if type(function)==str:
+                                            #Built in functions don't have a Function object value, because they aren't stored in scope - they are only recognized here by their strings
+                                            if function=="print":
+                                                print("PRINT")
+                                                for param in array:
+                                                    print(str(param))
+                                            elif function=="len":
+                                                print("len=?")
+                                            else:
+                                                print("Unknown function")
+                                        else:
+                                            #Not Built In Function
+                                            newScope={}
+                                            for j in range(len(function.variables)):
+                                                newScope[function.variables[j]]=array[j]
+                                            SCOPE.append(newScope)
+                                            tok=tokenize(function.chars)
+                                            typi=typify(tok)
+                                            evalu=evaluate(typi)
+                                            tokens[i-count-1]=evalu[0]
+                                        SCOPE.pop()
                                         return evaluate(tokenss)
                                         break
                                 else:
                                     #Subscripting
                                     #Evaluate the stuff in the braces
+                                    #if 
                                     tokensToEval=tokens[i-count+1:i]
                                     array=getValue(tokens[i-count-1])
                                     subscript=evaluate([tokensToEval])[0]
@@ -364,7 +393,7 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                     if len(current)>0:array.append(evaluate([current])[0])
                                     for j in range(i-count,i):
                                         tokens.pop(i-count)
-                                    tokens[i-count]=array
+                                    tokens[i-count]=Token(array, "array")
                                     return evaluate(tokenss)
                                     break
                         elif type(tokens[i-count-1])==list:
@@ -403,20 +432,22 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
     for i in range(len(tokenss)):
         tokenss[i]=getValue(tokenss[i][0])
     return tokenss
-#while True:
-    #i=input(">>> ")
+
 file=open('NLCode.txt')
 i=file.read()
-nonType=tokenize(i)
+while True:
+    nonType=tokenize(i)
     #print("nonType: "+str(nonType))
-withType=typify(nonType)
+    withType=typify(nonType)
     #print(withType)
     #for l in withType:
         #for t in l:
             #print(t.typ + " -> " + str(t.value))
-withEval=evaluate(withType)
-for e in withEval:
-    print(e)
+    withEval=evaluate(withType)
+    for e in withEval:
+        print(e)
+        
+    i=input(">>> ")
     
 #/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/                        
 # /\  /\  /\  /\  /\  /\  /\  /\  /\  /\  /\           
@@ -435,9 +466,20 @@ for e in withEval:
 # /    \  /    \  /    \  /    \  /    \  /
 #/      \/      \/      \/      \/      \/
 
-#loops should print results on new lines
+#set values with subscripting - just execute the idea :)
+#return - just a way to break out of the scope
+#if/else statements and while loops
+#built in functions, like len
+#classes and object.characteristic or object.function()
 #should be able to programmatically create and run code using strings
 #interpreter should be flexible with adding new keywords/operators/syntaxes
+#Allow definition of new operators
+#var('varname') function lets you name a variable with a variable name
+
+#a(b,c)(b)={}{}
+#or
+#a(b,c)={}
+#a(b)={} #overloading
 
 #loops should be treated as functions
 #functions with no func keyword
@@ -445,3 +487,4 @@ for e in withEval:
 #scopes are entered when there is an opening curly brace
 #subscripting and arrays
 #you need to make numbers into tokens,too, so checking a value is always the same. and Token.string should be Token.value
+#fix += -= *= /=
