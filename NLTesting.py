@@ -22,6 +22,8 @@ def saveToScope(var:list,val):
             valueToChange=scope[var[0]]
             #Go through subscripts
             for j in range(1,len(var)-1):
+                print(valueToChange)
+                print(var[j])
                 valueToChange=valueToChange[var[j]]
             if len(var)>1:
                 valueToChange[var[len(var)-1]]=val
@@ -295,10 +297,10 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                             if len(current)>0:array.append(evaluate([current])[0])
                                             chars=tokens[i+2].value
                                             function=Function([array[0]],chars,funcName)
-                                            saveToScope('for',function) #Always save to the most specific scope, so there can be nested for loops
+                                            saveToScope(['for'],function) #Always save to the most specific scope, so there can be nested for loops
                                             tokenss.pop(l)
                                             for j in range(array[1],array[2]):
-                                                SCOPE.append({array[0]:j})
+                                                SCOPE.append({array[0][0]:j})
                                                 result=evaluate(typify(tokenize(chars)))
                                                 #tokenss.insert(l+j,result)
                                                 SCOPE.pop()
@@ -312,7 +314,7 @@ def evaluate(tokenss:list): #Input is a list of lists (each representing one lin
                                                     variables.append(tokens[j].value)
                                             chars=tokens[i+2].value
                                             function=Function(variables,chars,funcName)
-                                            saveToScope(funcName,function)
+                                            saveToScope([funcName],function)
                                             for j in range(i-count-1,i+2):
                                                 tokens.pop(i-count-1)
                                             tokens[i-count-1]=Token(chars,'instruction')
@@ -507,3 +509,4 @@ while True:
 #you need to make numbers into tokens,too, so checking a value is always the same. and Token.string should be Token.value
 #fix += -= *= /=
 #set values with subscripting - just execute the idea :)
+#returns - just need to break out of function/loop
