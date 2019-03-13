@@ -1,5 +1,5 @@
 # 3.141thon
-is a powerful, concise scripting language similar to Python (after all, that's what it is built on). Currently, 3.141thon supports the following features (but it is still progressing):
+is a powerful, flexible, and concise scripting language similar to Python (after all, that's what it is built on). Currently, 3.141thon supports the following features (but it is still progressing):
 
 - Expressions
 - Variables
