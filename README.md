@@ -1,4 +1,4 @@
-# 3.141thon
+# 3.141THON
 is a powerful, flexible, and concise scripting language similar to Python (after all, that's what it is built on). Currently, 3.141thon supports the following features (but it ~~is still progressing~~ hasn't been touched in a minute):
 
 - Expressions
